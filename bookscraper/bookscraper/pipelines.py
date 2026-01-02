@@ -94,77 +94,115 @@ from itemadapter import ItemAdapter
 
 class BookscraperPipeline:
     def process_item(self, item, spider):
-
         adapter = ItemAdapter(item)
 
-        ## Strip all whitespaces from strings
+        # Strip all whitespaces from strings
         field_names = adapter.field_names()
         for field_name in field_names:
             if field_name != 'description':
                 value = adapter.get(field_name)
                 if value:
-                    adapter[field_name] = value[0].strip()
+                    # Check if it's a list (multiple values)
+                    if isinstance(value, list):
+                        # Join list items or take first one
+                        if len(value) > 0:
+                            adapter[field_name] = value[0].strip()
+                        else:
+                            adapter[field_name] = ""
+                    # Check if it's a tuple (from the comma issue)
+                    elif isinstance(value, tuple):
+                        if len(value) > 0:
+                            adapter[field_name] = str(value[0]).strip()
+                        else:
+                            adapter[field_name] = ""
+                    else:
+                        # It's already a string
+                        adapter[field_name] = str(value).strip()
 
-
-        ## Category & Product Type --> switch to lowercase
+        # Category & Product Type --> switch to lowercase
         lowercase_keys = ['category', 'product_type']
         for lowercase_key in lowercase_keys:
             value = adapter.get(lowercase_key)
             if value:
-                adapter[lowercase_key] = value.lower()
+                if isinstance(value, list):
+                    value = value[0] if len(value) > 0 else ""
+                adapter[lowercase_key] = str(value).lower()
 
-
-        ## Price --> convert to float
+        # Price --> convert to float
         price_keys = ['price', 'price_excl_tax', 'price_incl_tax', 'tax']
         for price_key in price_keys:
             value = adapter.get(price_key)
-            # if value:
-            #     value = value.replace('£', '')
-            #     adapter[price_key] = float(value)
             if value:
+                # Convert to string if it's a list/tuple
+                if isinstance(value, list):
+                    value = value[0] if len(value) > 0 else ""
+                elif isinstance(value, tuple):
+                    value = value[0] if len(value) > 0 else ""
+                
+                value = str(value).replace('£', '')
                 # Remove currency symbol and non-numeric characters
                 cleaned = re.sub(r'[^\d\.]', '', value)
                 try:
-                    adapter[price_key] = float(cleaned)
+                    if cleaned:
+                        adapter[price_key] = float(cleaned)
+                    else:
+                        adapter[price_key] = 0.0
                 except ValueError:
                     spider.logger.warning(f"Could not convert {price_key} value '{value}' to float")
+                    adapter[price_key] = 0.0
 
-
-        ## Availability --> extract number of books in stock
+        # Availability --> extract number of books in stock
         availability_string = adapter.get('availability')
         if availability_string:
-            split_string_array = availability_string.split('(')
+            if isinstance(availability_string, list):
+                availability_string = availability_string[0] if len(availability_string) > 0 else ""
+            elif isinstance(availability_string, tuple):
+                availability_string = availability_string[0] if len(availability_string) > 0 else ""
+            
+            split_string_array = str(availability_string).split('(')
             if len(split_string_array) < 2:
                 adapter['availability'] = 0
             else:
                 availability_array = split_string_array[1].split(' ')
-                adapter['availability'] = int(availability_array[0])
+                try:
+                    adapter['availability'] = int(availability_array[0])
+                except (ValueError, IndexError):
+                    adapter['availability'] = 0
 
-
-        ## Reviews --> convert string to number
+        # Reviews --> convert string to number
         num_reviews_string = adapter.get('num_reviews')
         if num_reviews_string:
-            adapter['num_reviews'] = int(num_reviews_string)
+            if isinstance(num_reviews_string, list):
+                num_reviews_string = num_reviews_string[0] if len(num_reviews_string) > 0 else "0"
+            elif isinstance(num_reviews_string, tuple):
+                num_reviews_string = num_reviews_string[0] if len(num_reviews_string) > 0 else "0"
+            
+            try:
+                adapter['num_reviews'] = int(str(num_reviews_string))
+            except ValueError:
+                adapter['num_reviews'] = 0
 
-
-        ## Stars --> convert text to number
+        # Stars --> convert text to number
         stars_string = adapter.get('stars')
         if stars_string:
-            split_stars_array = stars_string.split(' ')
-            stars_text_value = split_stars_array[1].lower()
-            if stars_text_value == "zero":
-                adapter['stars'] = 0
-            elif stars_text_value == "one":
+            if isinstance(stars_string, list):
+                stars_string = stars_string[0] if len(stars_string) > 0 else ""
+            elif isinstance(stars_string, tuple):
+                stars_string = stars_string[0] if len(stars_string) > 0 else ""
+            
+            stars_string = str(stars_string)
+            if 'One' in stars_string:
                 adapter['stars'] = 1
-            elif stars_text_value == "two":
+            elif 'Two' in stars_string:
                 adapter['stars'] = 2
-            elif stars_text_value == "three":
+            elif 'Three' in stars_string:
                 adapter['stars'] = 3
-            elif stars_text_value == "four":
+            elif 'Four' in stars_string:
                 adapter['stars'] = 4
-            elif stars_text_value == "five":
+            elif 'Five' in stars_string:
                 adapter['stars'] = 5
-
+            else:
+                adapter['stars'] = 0
 
         return item
 
