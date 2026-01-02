@@ -151,7 +151,7 @@ class BookscraperPipeline:
         stars_string = adapter.get('stars')
         if stars_string:
             split_stars_array = stars_string.split(' ')
-            stars_text_value = split_stars_array[0].lower()
+            stars_text_value = split_stars_array[1].lower()
             if stars_text_value == "zero":
                 adapter['stars'] = 0
             elif stars_text_value == "one":

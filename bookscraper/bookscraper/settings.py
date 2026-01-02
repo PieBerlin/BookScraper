@@ -1,3 +1,17 @@
+import os
+from dotenv import load_dotenv,find_dotenv
+
+
+# BASE_DIR=os.path.dirname(os.path.dirname(os.abspath(__file__)))
+
+
+# DOTENV_PATH=os.path.join(BASE_DIR, '.env')
+
+
+
+load_dotenv(find_dotenv())
+
+
 # Scrapy settings for bookscraper project
 #
 # For simplicity, this file contains only settings considered important or
@@ -72,7 +86,7 @@ ITEM_PIPELINES = {
    "bookscraper.pipelines.BookscraperPipeline": 300,
    #"bookscraper.pipelines.SaveToMySQLPipeline": 400,
 }
-SCRAPEOPS_API_KEY='8238e78d-8c91-48dc-bbd2-85edf5cba21d'
+SCRAPEOPS_API_KEY=os.environ.get('SCRAPEOPS_API_KEY')
 # SCRAPEOPS_FAKE_BROWSER_HEADER_ENDPOINT=''
 SCRAPEOPS_FAKE_BROWSER_HEADER_ENABLED=True
 SCRAPEOPS_FAKE_USER_AGENT_ENDPOINT='https://headers.scrapeops.io/v1/user-agents'
